@@ -2,10 +2,12 @@ package com.example.myapplication.utilities;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-
+import java.math.BigInteger;
 public class PreferenceManager {
     private final SharedPreferences sharedPreferences;
-
+    private BigInteger[] g512 = new BigInteger[5];
+    private BigInteger[] p512 = new BigInteger[5];
+    private String[] bigString;
     public PreferenceManager(Context context)
     {
         sharedPreferences = context.getSharedPreferences(Constants.KEY_PREFERENCE_NAME, Context.MODE_PRIVATE);
@@ -51,4 +53,12 @@ public class PreferenceManager {
         editor.apply();
 
     }
+
+    public String getG(){
+       return sharedPreferences.getString(Constants.KEY_G,"0");
+    }
+    public String getP(){
+        return sharedPreferences.getString(Constants.KEY_P,"0");
+    }
+
 }

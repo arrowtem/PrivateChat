@@ -12,11 +12,10 @@ import com.example.myapplication.utilities.Constants;
 import com.example.myapplication.utilities.PreferenceManager;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
-
 import java.util.ArrayList;
 import java.util.List;
 
-public class UsersActivity extends BaseActivity implements UsersListener {
+public class UsersActivity extends BaseActivity implements UsersListener  {
 
     private ActivityUsersBinding binding;
     private PreferenceManager preferenceManager;
@@ -82,11 +81,15 @@ public class UsersActivity extends BaseActivity implements UsersListener {
         }
 
  }
+ private void set(){
+
+ }
 
  @Override
     public void onUserClicked(User user)
  {
      Intent intent = new Intent(UsersActivity.this,ChatActivity.class);
+     set();
      intent.putExtra(Constants.KEY_USER,user);
      startActivity(intent);
      finish();
