@@ -51,6 +51,7 @@ public class MainActivity extends BaseActivity  {
                 );
         HashMap <String,Object> updates = new HashMap<>();
         updates.put(Constants.KEY_FCM_TOKEN, FieldValue.delete());
+        //updates.put(Constants.KEY_PUBLIC_KEY, FieldValue.delete());
         documentReference.update(updates)
                 .addOnSuccessListener(unused -> {
                     preferenceManager.clear();

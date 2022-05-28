@@ -28,8 +28,10 @@ public class SignInActivity extends AppCompatActivity {
         binding = ActivitySignInBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
         setListeners();
-        binding.inputEmail.setText("a@mail.ru");
-        binding.inputPassword.setText("1");
+        if(preferenceManager.getString(Constants.KEY_EMAIL)!="NULL" && preferenceManager.getString(Constants.KEY_PASSWORD)!="NULL")
+        {
+            signIn(preferenceManager.getString(Constants.KEY_PASSWORD),preferenceManager.getString(Constants.KEY_EMAIL));
+        }
     }
 
     private void setListeners() {
@@ -38,17 +40,17 @@ public class SignInActivity extends AppCompatActivity {
 
         binding.buttonSignIn.setOnClickListener(v -> {
             if (isValidSignInDetails()) {
-                signIn();
+                signIn(binding.inputPassword.getText().toString(),binding.inputEmail.getText().toString());
             }
         });
     }
 
-    private void signIn() {
+    private void signIn(String password, String email) {
         loading(true);
         FirebaseFirestore database = FirebaseFirestore.getInstance();
         database.collection(Constants.KEY_COLLECTION_USERS)
-                .whereEqualTo(Constants.KEY_EMAIL, binding.inputEmail.getText().toString())
-                .whereEqualTo(Constants.KEY_PASSWORD, binding.inputPassword.getText().toString())
+                .whereEqualTo(Constants.KEY_EMAIL, email)
+                .whereEqualTo(Constants.KEY_PASSWORD, password)
                 .get()
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful() && task != null && task.getResult().getDocuments().size() > 0) {

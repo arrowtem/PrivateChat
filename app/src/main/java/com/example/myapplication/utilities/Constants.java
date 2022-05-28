@@ -18,6 +18,7 @@ public class Constants {
     public static final String KEY_TIMESTAMP = "timestamp";
     public static final String KEY_CHAT ="chats";
     public static final String KEY_PUBLIC_KEY ="publicKey";
+    public static final String KEY_PRIVATE_KEY ="privateKey";
     public static final String KEY_MOD ="publicMod";
     public static final String KEY_SECRET_KEY ="secretKey";
     public static final String KEY_SHARED_SECRET_KEY ="secretSharedKey";
@@ -28,9 +29,11 @@ public class Constants {
     public static final String KEY_A = "A";
     public static final String KEY_a = "a";
     public static final String KEY_B = "B";
+    public static final String KEY_SIGNATURE_VERIFY = "verify";
     public static final String KEY_FIRST_USER = "firstUser";
     public static final String KEY_SECOND_USER = "secondUser";
     public static final String KEY_CHAT_ID = "chatId";
-
+    public static final String KEY_MESSAGE_VERIFY = "messageVerify";
+    public static final String KEY_PARTNERS_AVAIlABLE = "partnersAvailable";
 
 }

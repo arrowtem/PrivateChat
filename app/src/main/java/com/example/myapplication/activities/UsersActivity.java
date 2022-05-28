@@ -3,6 +3,7 @@ package com.example.myapplication.activities;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.Toast;
 
 import com.example.myapplication.adapters.UsersAdapters;
 import com.example.myapplication.databinding.ActivityUsersBinding;
@@ -52,6 +53,7 @@ public class UsersActivity extends BaseActivity implements UsersListener  {
                                     user.email=queryDocumentSnapshot.getString(Constants.KEY_EMAIL);
                                     user.image=queryDocumentSnapshot.getString(Constants.KEY_IMAGE);
                                     user.token=queryDocumentSnapshot.getString(Constants.KEY_FCM_TOKEN);
+                                    user.publicKey=queryDocumentSnapshot.getString(Constants.KEY_PUBLIC_KEY);
                                     user.id=queryDocumentSnapshot.getId();
                                     users.add(user);
 
@@ -91,8 +93,11 @@ public class UsersActivity extends BaseActivity implements UsersListener  {
      Intent intent = new Intent(UsersActivity.this,ChatActivity.class);
      set();
      intent.putExtra(Constants.KEY_USER,user);
+    preferenceManager.putString(Constants.KEY_PUBLIC_KEY,user.publicKey);
      startActivity(intent);
      finish();
  }
-
+    private void showToast(String message) {
+        Toast.makeText(getApplicationContext(), message, Toast.LENGTH_SHORT).show();
+    }
 }

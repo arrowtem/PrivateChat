@@ -8,14 +8,19 @@ import android.util.Base64;
 import android.view.View;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+
 import com.example.myapplication.adapters.ChatAdapter;
 import com.example.myapplication.databinding.ActivityChatBinding;
 import com.example.myapplication.models.Chat;
 import com.example.myapplication.models.User;
 import com.example.myapplication.utilities.Constants;
+import com.example.myapplication.utilities.KeyGen;
 import com.example.myapplication.utilities.PreferenceManager;
 import com.example.myapplication.utilities.encryption;
+import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
 import com.google.firebase.firestore.CollectionReference;
 import com.google.firebase.firestore.DocumentChange;
 import com.google.firebase.firestore.DocumentReference;
@@ -29,6 +34,7 @@ import com.google.firebase.firestore.SetOptions;
 import java.math.BigInteger;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.security.PublicKey;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -53,6 +59,7 @@ public class ChatActivity extends BaseActivity {
     private PreferenceManager preferenceManager;
     private FirebaseFirestore database;
     private Boolean isReceiverAvailable = false;
+    private Boolean isPartnerAvailable = false;
     ListenerRegistration listenerRegistration;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -65,9 +72,6 @@ public class ChatActivity extends BaseActivity {
         checkChat();
         init();
         listenMessages();
-
-
-
     }
 
     private void init() {
@@ -86,17 +90,18 @@ public class ChatActivity extends BaseActivity {
         preferenceManager = new PreferenceManager(getApplicationContext());
         if (binding.sendText.getText().toString().trim().isEmpty()) {
         } else {
-            encryption encryption = new encryption();
+
             String key =preferenceManager.getString(Constants.KEY_SHARED_SECRET_KEY);
             String messageee =binding.sendText.getText().toString();
             String messagee = encryption.encrypt(messageee,key);
-            showToast(messagee);
-            showToast(key);
+            //showToast(messagee);
+           // showToast(key);
             HashMap<String, Object> message = new HashMap<>();
             message.put(Constants.KEY_SENDER_ID, preferenceManager.getString(Constants.KEY_USR_ID));
             message.put(Constants.KEY_RECEIVER_ID, receiverUser.id);
             message.put(Constants.KEY_MESSAGE, messagee );
             message.put(Constants.KEY_TIMESTAMP, new Date());
+            message.put(Constants.KEY_CHAT_ID, preferenceManager.getString(Constants.KEY_CHAT_ID));
             database.collection(Constants.KEY_COLLECTION_CHAT).add(message);
             binding.sendText.setText(null);
         }
@@ -116,38 +121,87 @@ public class ChatActivity extends BaseActivity {
                             if (value.getString(Constants.KEY_B).equals("none")) {
                                 isReceiverAvailable = false;
                             } else {
-                                isReceiverAvailable = true;
+                                PublicKey publicKey = KeyGen.getKeyPublic(preferenceManager.getString(Constants.KEY_PUBLIC_KEY));
+                                //showToast(preferenceManager.getString(Constants.KEY_A));
+                                try {
+                                    byte[] signature = Base64.decode(value.getString(Constants.KEY_SIGNATURE_VERIFY),Base64.DEFAULT);
+                                    Boolean yes =KeyGen.performVerification(signature,publicKey,value.getString(Constants.KEY_B));
+                                    if(yes==true){
+                                        isReceiverAvailable=true;
+                                        showToast("all oK!");
+                                    }else{isReceiverAvailable=false;
+                                    showToast(value.getString(Constants.KEY_B));
+                                    onBackPressed();}
+                                } catch (Exception e) {
+                                    e.printStackTrace();
+                                    showToast(e.toString());
+                                }
                             }
 
                         }
+
                         if (isReceiverAvailable) {
-                            showToast("finnaly");
-                            binding.layoutSend.setVisibility(View.VISIBLE);
+                           // showToast("finnaly");
                             createSecret1(value.getString(Constants.KEY_B));
+                            binding.layoutSend.setVisibility(View.VISIBLE);
+                            listenerRegistration.remove();
                         } else {
-                            showToast("fuck my ass");
+                          //  showToast("fuck my ass");
                         }
                     });
         }
     }
-
-    private void listenAvailabilityOfMaster(String id)
-    {
+    private void listenAvailabilityOfPartner() {
         FirebaseFirestore database = FirebaseFirestore.getInstance();
-        preferenceManager.putString(Constants.KEY_CHAT_ID,id);
         if(listenerRegistration==null) {
-            listenerRegistration = database.collection(Constants.KEY_CHAT).document(id)
+            listenerRegistration = database.collection(Constants.KEY_CHAT).document(preferenceManager.getString(Constants.KEY_CHAT_ID))
                     .addSnapshotListener(ChatActivity.this, (value, error) -> {
                         if (error != null) {
                             return;
                         }
+                        ;
+                        if (value != null) {
+                            if (value.getString(Constants.KEY_PARTNERS_AVAIlABLE).equals("true")) {
+                                isPartnerAvailable = true;
+                            } else {
+                                isPartnerAvailable = false;
+                            }
 
-                        if (value == null) {
-                            onBackPressed();
+                        }
+
+                        if (isReceiverAvailable) {
+                            // showToast("finnaly");
+                            createSecret1(value.getString(Constants.KEY_B));
+                            binding.layoutSend.setVisibility(View.VISIBLE);
+                            listenerRegistration.remove();
+                        } else {
+                            //  showToast("fuck my ass");
                         }
                     });
         }
     }
+    private void exit()
+    {
+        FirebaseFirestore rootRef = FirebaseFirestore.getInstance();
+        CollectionReference itemsRef = rootRef.collection("chat");
+        com.google.firebase.firestore.Query query = itemsRef
+                .whereEqualTo(Constants.KEY_SENDER_ID, preferenceManager.getString(Constants.KEY_USR_ID));
+        query.get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
+            @Override
+            public void onComplete(@NonNull Task<QuerySnapshot> task) {
+                if (task.isSuccessful()) {
+                    for (DocumentSnapshot document : task.getResult()) {
+                        itemsRef.document(document.getId()).delete();
+                    }
+                } else {
+                    showToast("pizdec");
+                }
+            }
+        });
+        onBackPressed();
+
+        }
+
 
     private void listenMessages() {
         database.collection(Constants.KEY_COLLECTION_CHAT)
@@ -169,8 +223,7 @@ public class ChatActivity extends BaseActivity {
             for (DocumentChange documentChange : value.getDocumentChanges()) {
                 if (documentChange.getType() == DocumentChange.Type.ADDED) {
                     ChatMessage chatMessage = new ChatMessage();
-                    encryption encryption = new encryption();
-                    String key =preferenceManager.getString(Constants.KEY_SHARED_SECRET_KEY);
+                    String key = preferenceManager.getString(Constants.KEY_SHARED_SECRET_KEY);
                     chatMessage.senderId = documentChange.getDocument().getString(Constants.KEY_SENDER_ID);
                     chatMessage.receiverId = documentChange.getDocument().getString(Constants.KEY_RECEIVER_ID);
 
@@ -217,10 +270,11 @@ public class ChatActivity extends BaseActivity {
         Intent intent = getIntent();
         receiverUser = (User) getIntent().getSerializableExtra(Constants.KEY_USER);
         binding.textName.setText(receiverUser.name);
+     //   preferenceManager.putString(Constants.KEY_PUBLIC_KEY,receiverUser.publicKey);
     }
 
     private void setListeners() {
-        binding.imageBack.setOnClickListener(v -> onBackPressed());
+        binding.imageBack.setOnClickListener(v -> exit());
         binding.layoutSend.setOnClickListener(v -> {
             try {
                 sendMessage();
@@ -255,10 +309,13 @@ public class ChatActivity extends BaseActivity {
 
     public String putBigInt() {
         Random rnd = new Random();
-        BigInteger i = new BigInteger(10000, rnd);
+        BigInteger i = new BigInteger(1000, rnd);
         return i.toString();
     }
-    private void createChat() {
+
+
+
+    private void createChat() throws Exception {
         preferenceManager = new PreferenceManager(getApplicationContext());
         FirebaseFirestore database = FirebaseFirestore.getInstance();
         HashMap<String, Object> chat = new HashMap<>();
@@ -270,8 +327,22 @@ public class ChatActivity extends BaseActivity {
         chat.put(Constants.KEY_P, preferenceManager.getString(Constants.KEY_P));
         preferenceManager.putString(Constants.KEY_A, createKey());
         chat.put(Constants.KEY_A, preferenceManager.getString(Constants.KEY_A));
+       // chat.put(Constants.KEY_PUBLIC_KEY, preferenceManager.getString(Constants.KEY_PUBLIC_KEY));
         chat.put(Constants.KEY_B, "none");
+        chat.put(Constants.KEY_PARTNERS_AVAIlABLE, "true");
+        String stringVerify= preferenceManager.getString(Constants.KEY_A);
+        byte[] signature = KeyGen.performSigning(KeyGen.getKeyPrivate(preferenceManager.getString(Constants.KEY_PRIVATE_KEY)),stringVerify);
+        String signatureBase64 = Base64.encodeToString(signature,Base64.DEFAULT);
+        chat.put(Constants.KEY_SIGNATURE_VERIFY,signatureBase64);
+        chat.put(Constants.KEY_MESSAGE_VERIFY, stringVerify);
+
         preferenceManager.putString(Constants.KEY_B, "none");
+
+
+        //byte[] signature = KeyGen.performSigning(KeyGen.getKeyPrivate(preferenceManager.getString(Constants.KEY_PRIVATE_KEY)));
+
+
+
         database.collection(Constants.KEY_CHAT).add(chat).addOnSuccessListener(new OnSuccessListener<DocumentReference>() {
             @Override
             public void onSuccess(DocumentReference documentReference) {
@@ -280,10 +351,11 @@ public class ChatActivity extends BaseActivity {
         });
     }
 
-
     private void checkChat() {
         FirebaseFirestore database = FirebaseFirestore.getInstance();
+
         preferenceManager = new PreferenceManager(getApplicationContext());
+       // showToast(preferenceManager.getString(Constants.KEY_PUBLIC_KEY));
         CollectionReference reference = database.collection(Constants.KEY_CHAT);
         reference.whereEqualTo(Constants.KEY_SECOND_USER, preferenceManager.getString(Constants.KEY_USR_ID))
                 .whereEqualTo(Constants.KEY_FIRST_USER, receiverUser.id).get()
@@ -294,13 +366,31 @@ public class ChatActivity extends BaseActivity {
                         preferenceManager.putString(Constants.KEY_G, documentSnapshot.getString(Constants.KEY_G));
                         preferenceManager.putString(Constants.KEY_P, documentSnapshot.getString(Constants.KEY_P));
                         preferenceManager.putString(Constants.KEY_A, documentSnapshot.getString(Constants.KEY_A));
-                        showToast(preferenceManager.getString(Constants.KEY_CHAT_ID));
-                        createSecret();
+                        PublicKey publicKey = KeyGen.getKeyPublic(preferenceManager.getString(Constants.KEY_PUBLIC_KEY));
+
+                        //showToast(preferenceManager.getString(Constants.KEY_A));
+                        try {
+                            byte[] signature = Base64.decode(documentSnapshot.getString(Constants.KEY_SIGNATURE_VERIFY),Base64.DEFAULT);
+                            Boolean yes =KeyGen.performVerification(signature,publicKey,preferenceManager.getString(Constants.KEY_A));
+                            if(yes==true){
+                                showToast("All ok!!!");
+                            }else{showToast("Fuck...");}
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                            showToast(e.toString());
+                        }
+
+                      //  showToast(preferenceManager.getString(Constants.KEY_CHAT_ID));
+                        try {
+                            createSecret();
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
                         binding.layoutSend.setVisibility(View.VISIBLE);
                        // listenAvailabilityOfMaster(documentSnapshot.getId());
                     } else {
                         checkChat2();
-                        showToast("Unable to sign in");
+
                     }
                 });
 
@@ -315,7 +405,11 @@ public class ChatActivity extends BaseActivity {
                     if (task.isSuccessful() && task != null && task.getResult().getDocuments().size() > 0) {
                         deleteChat();
                     }
-                    createChat();
+                    try {
+                        createChat();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
                 });
 
     }
@@ -336,7 +430,7 @@ public class ChatActivity extends BaseActivity {
         preferenceManager.putString(Constants.KEY_A, A.toString());
         return A.toString();
     }
-    private String createSecret() {
+    private String createSecret() throws Exception {
         preferenceManager = new PreferenceManager(getApplicationContext());
         FirebaseFirestore database = FirebaseFirestore.getInstance();
         BigInteger b = new BigInteger(putBigInt());
@@ -347,14 +441,16 @@ public class ChatActivity extends BaseActivity {
         BigInteger B = g.modPow(b,p);
         preferenceManager.putString(Constants.KEY_A, A.toString());
        // showToast(K.toString());
-
-        Map<String, Object> data = new HashMap<>();
         preferenceManager.putString(Constants.KEY_B, B.toString());
+        byte[] signature = KeyGen.performSigning(KeyGen.getKeyPrivate(preferenceManager.getString(Constants.KEY_PRIVATE_KEY)),B.toString());
+        String signatureBase64 = Base64.encodeToString(signature,Base64.DEFAULT);
+        Map<String, Object> data = new HashMap<>();
         data.put(Constants.KEY_B, preferenceManager.getString(Constants.KEY_B));
+        data.put(Constants.KEY_SIGNATURE_VERIFY,signatureBase64);
         database.collection(Constants.KEY_CHAT).document(preferenceManager.getString(Constants.KEY_CHAT_ID))
                 .set(data, SetOptions.merge());
         preferenceManager.putString(Constants.KEY_SHARED_SECRET_KEY,K.toString());
-        showToast(K.toString());
+       // showToast(K.toString());
         return K.toString();
     }
     private String createSecret1(String Biba) {
@@ -365,7 +461,7 @@ public class ChatActivity extends BaseActivity {
         BigInteger B = new BigInteger(Biba);
         BigInteger K = B.modPow(a,p);
         preferenceManager.putString(Constants.KEY_SHARED_SECRET_KEY,K.toString());
-        showToast(K.toString());
+      //  showToast(K.toString());
         return K.toString();
     }
 

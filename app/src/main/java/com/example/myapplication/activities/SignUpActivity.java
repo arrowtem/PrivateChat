@@ -17,12 +17,15 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.myapplication.databinding.ActivitySignUpBinding;
 import com.example.myapplication.utilities.Constants;
+import com.example.myapplication.utilities.KeyGen;
 import com.example.myapplication.utilities.PreferenceManager;
 import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.io.ByteArrayOutputStream;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
+import java.security.KeyPair;
+import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
 
 public class SignUpActivity extends AppCompatActivity {
@@ -42,8 +45,13 @@ public class SignUpActivity extends AppCompatActivity {
 
         binding.textSignIn.setOnClickListener(v -> onBackPressed());
         binding.buttonSignUp.setOnClickListener(v ->
-        { if(isValidSignUp())
-            signUp();
+        { if(isValidSignUp()) {
+            try {
+                signUp();
+            } catch (NoSuchAlgorithmException e) {
+                e.printStackTrace();
+            }
+        }
 
         });
         binding.layoutImage.setOnClickListener(v -> {
@@ -57,15 +65,22 @@ public class SignUpActivity extends AppCompatActivity {
     {
         Toast.makeText(getApplicationContext(), message, Toast.LENGTH_SHORT).show();
     }
-    private void signUp(){
+    private void signUp() throws NoSuchAlgorithmException {
     loading(true);
         FirebaseFirestore database = FirebaseFirestore.getInstance();
         HashMap<String,Object> user = new HashMap<>();
+        KeyPair keyPair = KeyGen.generateKeys();
+
         user.put(Constants.KEY_NAME, binding.inputName.getText().toString());
+        preferenceManager.putString(Constants.KEY_PRIVATE_KEY,KeyGen.toStringPrivate(keyPair.getPrivate()));
+        preferenceManager.putString(Constants.KEY_PUBLIC_KEY,KeyGen.toStringPublic(keyPair.getPublic()));
+        preferenceManager.putString(Constants.KEY_PASSWORD,binding.inputPassword.getText().toString());
+        preferenceManager.putString(Constants.KEY_EMAIL,binding.inputEmail.getText().toString());
         user.put(Constants.KEY_EMAIL, binding.inputEmail.getText().toString());
         user.put(Constants.KEY_PASSWORD, binding.inputPassword.getText().toString());
         user.put(Constants.KEY_IMAGE, encodedImage);
-        user.put(Constants.KEY_IN_CHAT_WITH, 0);
+        user.put(Constants.KEY_PUBLIC_KEY, KeyGen.toStringPublic(keyPair.getPublic()));
+
         database.collection(Constants.KEY_COLLECTION_USERS).add(user).addOnSuccessListener(document ->
                 {
                 loading(false);

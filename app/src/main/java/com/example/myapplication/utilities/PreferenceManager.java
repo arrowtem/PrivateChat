@@ -2,7 +2,9 @@ package com.example.myapplication.utilities;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+
 import java.math.BigInteger;
+
 public class PreferenceManager {
     private final SharedPreferences sharedPreferences;
     private BigInteger[] g512 = new BigInteger[5];
@@ -60,5 +62,7 @@ public class PreferenceManager {
     public String getP(){
         return sharedPreferences.getString(Constants.KEY_P,"0");
     }
+
+
 
 }

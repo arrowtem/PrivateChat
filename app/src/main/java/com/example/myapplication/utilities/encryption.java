@@ -21,7 +21,7 @@ import javax.crypto.spec.SecretKeySpec;
  */
 public class encryption {
 
-    public String encrypt(String password, String key) throws
+    public static String encrypt(String password, String key) throws
             NoSuchAlgorithmException, NoSuchPaddingException,
             InvalidKeyException, IllegalBlockSizeException,
             BadPaddingException, UnsupportedEncodingException, ShortBufferException {
@@ -34,7 +34,7 @@ public class encryption {
 
     }
 
-    public String decrypt(String encryptedtext, String key)
+    public static String decrypt(String encryptedtext, String key)
             throws NoSuchAlgorithmException, NoSuchPaddingException,
             InvalidKeyException, IllegalBlockSizeException,
             BadPaddingException {
